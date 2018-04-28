@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -87,6 +86,8 @@ func master(ch chan []string, fetcher Fetcher) {
 	n := 1
 	fetched := make(map[string]bool)
 	for urls := range ch {
+		// range iterators over each element ad it's received from ch channel.
+		// It will repeat this until execute break or close the channel.
 		for _, u := range urls {
 			if fetched[u] == false {
 				fetched[u] = true
