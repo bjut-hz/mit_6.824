@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"mit_6.824/src/mapreduce"
 	"os"
-	"strings"
 	"strconv"
+	"strings"
 	"unicode"
+
+	"mit_6.824/src/mapreduce"
 )
 
 //

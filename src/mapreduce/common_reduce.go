@@ -70,6 +70,7 @@ func doReduce(
 				break
 			}
 
+			// gather in one key
 			_, ok := keyValues[kv.Key]
 			if !ok {
 				keyValues[kv.Key] = make([]string, 0)
