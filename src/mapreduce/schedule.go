@@ -3,7 +3,6 @@ package mapreduce
 import (
 	"fmt"
 	"sync"
-
 )
 
 //
@@ -38,26 +37,45 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 	// Your code here (Part III, Part IV).
 	//
 
+	idleWorkers := make(chan string, ntasks * n_other)
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case workAddress := <-registerChan:
+				idleWorkers <- workAddress
+			case <- done:
+				break
+			}
+		}
+	}()
+
 	var wg sync.WaitGroup
-	for ntasks > 0 {
-		fmt.Println("ntasks: ", ntasks, len(mapFiles))
-		rpcAddress := <- registerChan
+	for i := 0; i < ntasks; i++ {
 		wg.Add(1)
+		go func(taskNum int) {
+			debug("DEBUG: current taskNum: %v, NumOtherPhase: %v, jobPhase: %v \n", taskNum, n_other, phase)
+			tryTimes := 0
+			for tryTimes < 10 {
+				workerAddress := <- idleWorkers
+				taskArgs := DoTaskArgs{JobName:jobName, File:mapFiles[taskNum], Phase:phase, TaskNumber:taskNum, NumOtherPhase:n_other}
+				ret := call(workerAddress, "Worker.DoTask", &taskArgs, new(struct{}))
 
-
-		go func() {
-			defer wg.Done()
-
-			ntasks--
-			fmt.Println("call worker.DoTask......", ntasks)
-			taskArgs := DoTaskArgs{JobName:jobName, File:mapFiles[ntasks], Phase:phase, TaskNumber:ntasks, NumOtherPhase:n_other}
-			call(rpcAddress, "Worker.DoTask", &taskArgs, new(struct{}))
-
-		}()
+				if ret {
+					// return idle worker back
+					registerChan <- workerAddress
+					wg.Done()
+					break
+				} else {
+					tryTimes++
+					// do task error. worker may in error state.
+					debug("DEBUG: DoTask error. address: %v, tryTimes: %v", workerAddress, tryTimes)
+				}
+			}
+		}(i)
 	}
-
 	wg.Wait()
-
+	done <- true
 
 	fmt.Printf("Schedule: %v done\n", phase)
 }

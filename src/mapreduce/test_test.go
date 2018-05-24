@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	nNumber = 100
-	nMap    = 2
-	nReduce = 2
+	nNumber = 100000
+	nMap    = 20
+	nReduce = 10
 )
 
 // Create input file with N numbers

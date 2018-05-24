@@ -83,7 +83,6 @@ func Sequential(jobName string, files []string, nreduce int,
 // and newly registered workers to channel ch. schedule()
 // reads ch to learn about workers.
 func (mr *Master) forwardRegistrations(ch chan string) {
-	fmt.Println("forwardRegistrations ")
 	i := 0
 	for {
 		mr.Lock()
@@ -104,7 +103,6 @@ func (mr *Master) forwardRegistrations(ch chan string) {
 // Distributed schedules map and reduce tasks on workers that register with the
 // master over RPC.
 func Distributed(jobName string, files []string, nreduce int, master string) (mr *Master) {
-	fmt.Println("in Distributed function, begin to distribute tasks")
 	mr = newMaster(master)
 	mr.startRPCServer()
 	go mr.run(jobName, files, nreduce,
