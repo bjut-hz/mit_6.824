@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	"mit_6.824/src/mapreduce"
+	"../mapreduce"
 )
 
 //
