@@ -69,7 +69,7 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 				} else {
 					tryTimes++
 					// do task error. worker may in error state.
-					debug("DEBUG: DoTask error. address: %v, tryTimes: %v", workerAddress, tryTimes)
+					debug("DEBUG: DoTask error. taskNum: %v, jobPhase: %v, workerAddress: %v, tryTimes: %v\n", taskNum, phase, workerAddress, tryTimes)
 				}
 			}
 		}(i)
