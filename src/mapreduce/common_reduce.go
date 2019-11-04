@@ -54,7 +54,7 @@ func doReduce(
 	keyValues := make(map[string][]string)
 
 	for i := 0; i < nMap; i++ {
-		file, err := os.Open(reduceName(jobName, i, reduceTask))
+		file, err := os.Open(reduceName(jobName, i, reduceTask)) // 获取map生成的中间文件
 		if nil != err {
 			debug("open file error. %s", err)
 			return

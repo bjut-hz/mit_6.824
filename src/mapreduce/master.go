@@ -89,7 +89,7 @@ func (mr *Master) forwardRegistrations(ch chan string) {
 		if len(mr.workers) > i {
 			// there's a worker that we haven't told schedule() about.
 			w := mr.workers[i]
-			go func() { ch <- w }() // send without holding the lock.
+			go func() { ch <- w }() // send without holding the lock. // 通知schedule
 			i = i + 1
 		} else {
 			// wait for Register() to add an entry to workers[]
@@ -112,7 +112,7 @@ func Distributed(jobName string, files []string, nreduce int, master string) (mr
 			schedule(mr.jobName, mr.files, mr.nReduce, phase, ch)
 		},
 		func() {
-			mr.stats = mr.killWorkers()
+			mr.stats = mr.killWorkers() // 关闭每个worker,使用rpc
 			mr.stopRPCServer()
 		})
 	return

@@ -161,7 +161,7 @@ func TestSequentialMany(t *testing.T) {
 
 func TestParallelBasic(t *testing.T) {
 	mr := setup()
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 2; i++ { // 注册worker
 		go RunWorker(mr.address, port("worker"+strconv.Itoa(i)),
 			MapFunc, ReduceFunc, -1, nil)
 	}

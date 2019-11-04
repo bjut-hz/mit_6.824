@@ -136,7 +136,7 @@ func RunWorker(MasterAddress string, me string,
 		log.Fatal("RunWorker: worker ", me, " error: ", e)
 	}
 	wk.l = l
-	wk.register(MasterAddress)
+	wk.register(MasterAddress) // 向master注册worker
 
 	// DON'T MODIFY CODE BELOW
 	for {

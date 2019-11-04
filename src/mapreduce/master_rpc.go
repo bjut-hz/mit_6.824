@@ -42,10 +42,10 @@ func (mr *Master) startRPCServer() {
 			if err == nil {
 				go func() {
 					rpcs.ServeConn(conn)
-					conn.Close()
+					conn.Close()// 一次rpc调用结束后就关闭该链接
 				}()
 			} else {
-				debug("RegistrationServer: accept error", err)
+				debug("RegistrationServer: accept error %s", err)
 				break
 			}
 		}

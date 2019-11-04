@@ -12,7 +12,7 @@ import (
 // number of reduce tasks. the registerChan argument yields a stream
 // of registered workers; each item is the worker's RPC address,
 // suitable for passing to call(). registerChan will yield all
-// existing registered workers (if any) and new ones as they register.
+// existing registered workers (if any) and new ones as they register for every given phase.
 //
 
 
@@ -43,14 +43,14 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 		for {
 			select {
 			case workAddress := <-registerChan:
-				idleWorkers <- workAddress
+				idleWorkers <- workAddress // 获得了空闲worker的rpc地址
 			case <- done:
 				break
 			}
 		}
 	}()
 
-	var wg sync.WaitGroup
+	var wg sync.WaitGroup // 用该变量保证了map阶段必须完成才会进行reduce阶段
 	for i := 0; i < ntasks; i++ {
 		wg.Add(1)
 		go func(taskNum int) {

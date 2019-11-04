@@ -50,7 +50,7 @@ type RegisterArgs struct {
 //
 func call(srv string, rpcname string,
 	args interface{}, reply interface{}) bool {
-	c, errx := rpc.Dial("unix", srv)
+	c, errx := rpc.Dial("unix", srv) // 每次rpc调用都会新发起一个socket链接
 	if errx != nil {
 		return false
 	}
