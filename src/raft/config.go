@@ -230,7 +230,7 @@ func (cfg *config) cleanup() {
 	cfg.net.Cleanup()
 	cfg.checkTimeout()
 }
-
+// raft每个服务器之间都有连接
 // attach server i to the net.
 func (cfg *config) connect(i int) {
 	// fmt.Printf("connect(%d)\n", i)

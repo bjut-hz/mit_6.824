@@ -19,6 +19,7 @@ import "sync"
 // (much more than the paper's range of timeouts).
 const RaftElectionTimeout = 1000 * time.Millisecond
 
+// raft的时间选取:每秒10次心跳, 选举超时时间应该远大于100ms
 func TestInitialElection2A(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false)
@@ -38,7 +39,7 @@ func TestInitialElection2A(t *testing.T) {
 	time.Sleep(2 * RaftElectionTimeout)
 	term2 := cfg.checkTerms()
 	if term1 != term2 {
-		fmt.Printf("warning: term changed even though there were no failures")
+		fmt.Printf("warning: term changed even though there were no failures, term1: %v, term2: %v\n", term1, term2)
 	}
 
 	// there should still be a leader.
