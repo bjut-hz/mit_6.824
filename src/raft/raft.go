@@ -294,7 +294,7 @@ func (rf *Raft) RequestAppendEntries(args *AppendEntriesArgs, reply *AppendEntri
 		} else {
 			rf.commitIndex = args.LeaderCommit
 		}
-
+		//DPrintf("server %v, commit log", rf.me)
 		rf.commitChan <- true
 	}
 
@@ -430,6 +430,7 @@ func (rf *Raft) broadcastAppendEntriesReq() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
+	//DPrintf("broadcastAppendEntriesReq: %v\n", rf)
 	N := rf.commitIndex
 	lastIndex := rf.getLastLogIndex()
 	baseIndex := rf.logs[0].Index
@@ -493,13 +494,20 @@ func (rf *Raft) broadcastAppendEntriesReq() {
 // the leader.
 //
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
-	index := -1
-	term := -1
-	isLeader := true
-
 	// Your code here (2B).
 
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 
+
+	index := -1
+	term := rf.currentTerm
+	isLeader := rf.state == LEADER
+	if isLeader {
+		index = rf.getLastLogIndex() + 1
+		rf.logs = append(rf.logs, LogEntry{Term: term, Command: command, Index: index})
+		rf.persist()
+	}
 	return index, term, isLeader
 }
 
@@ -618,8 +626,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 				commitIndex := rf.commitIndex
 				baseIndex := rf.logs[0].Index
 
-				for i := rf.lastApplied; i <= commitIndex; i++ {
-					msg := ApplyMsg{CommandIndex:i, Command: rf.logs[i - baseIndex].Command}
+				for i := rf.lastApplied + 1; i <= commitIndex; i++ {
+					msg := ApplyMsg{CommandIndex:i, Command: rf.logs[i - baseIndex].Command, CommandValid: true}
+					//DPrintf("server %v, commit log entry, command: %v", rf.me, msg.Command)
 					applyCh <- msg
 					rf.lastApplied = i
 				}
