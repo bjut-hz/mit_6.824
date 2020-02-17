@@ -570,29 +570,34 @@ func TestPersist22C(t *testing.T) {
 
 		leader1 := cfg.checkOneLeader()
 
+		DPrintf("--------------disconnect leader1 + 1, 2 ---------------")
 		cfg.disconnect((leader1 + 1) % servers)
 		cfg.disconnect((leader1 + 2) % servers)
 
 		cfg.one(10+index, servers-2, true)
 		index++
 
+		DPrintf("--------------disconnect leader1 + 0, 3, 4 ---------------")
 		cfg.disconnect((leader1 + 0) % servers)
 		cfg.disconnect((leader1 + 3) % servers)
 		cfg.disconnect((leader1 + 4) % servers)
 
 		cfg.start1((leader1 + 1) % servers)
 		cfg.start1((leader1 + 2) % servers)
+		DPrintf("--------------connect leader1 + 1, 2 ---------------")
 		cfg.connect((leader1 + 1) % servers)
 		cfg.connect((leader1 + 2) % servers)
 
 		time.Sleep(RaftElectionTimeout)
 
 		cfg.start1((leader1 + 3) % servers)
+		DPrintf("--------------connect leader1 + 3 ---------------")
 		cfg.connect((leader1 + 3) % servers)
 
 		cfg.one(10+index, servers-2, true)
 		index++
 
+		DPrintf("--------------connect leader1 + 0,  4 ---------------")
 		cfg.connect((leader1 + 4) % servers)
 		cfg.connect((leader1 + 0) % servers)
 	}

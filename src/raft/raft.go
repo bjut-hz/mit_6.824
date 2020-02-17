@@ -234,11 +234,11 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	defer rf.mu.Unlock()
 	defer rf.persist()
 
-	reply.Term = rf.currentTerm
 	reply.VoteGranted = false
 
-	if rf.currentTerm > args.Term {
-		reply.VoteGranted = false
+	if args.Term < rf.currentTerm {
+		reply.Term = rf.currentTerm
+		DPrintf("[reject] %v currentTerm:%v vote reject for:%v term:%v",rf.me,rf.currentTerm,args.CandidateId,args.Term)
 		return
 	}
 
@@ -248,20 +248,23 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		rf.currentTerm = args.Term
 	}
 
+	reply.Term = rf.currentTerm
+
 	lastLogTerm := rf.getLastLogTerm()
 	lastLogIndex := rf.getLastLogIndex()
 
 	logFlag := false
-	if (args.LastLogTerm > lastLogTerm) || (args.LastLogTerm == lastLogTerm && args.LastLogIndex == lastLogIndex) {
+	if (args.LastLogTerm > lastLogTerm) || (args.LastLogTerm == lastLogTerm && args.LastLogIndex >= lastLogIndex) {
 		logFlag = true
 	}
 
-	if (-1 == rf.votedFor || rf.me == rf.votedFor) && logFlag {
+	if (-1 == rf.votedFor || args.CandidateId == rf.votedFor) && logFlag {
 		reply.VoteGranted = true
 		rf.votedFor = args.CandidateId
 		rf.voteChan <- true
 		rf.state = FOLLOWER
 	}
+	//DPrintf("[RequestVote]: server %v send %v", rf.me, args.CandidateId)
 }
 
 
@@ -381,6 +384,9 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 	DPrintf("[%v to %v]: RequestVote REQ: args: %+v", rf.me, server, args)
 
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
+
+	DPrintf("[%v to %v]: RequestVote ACK. result: %v, reply: %+v", rf.me, server, ok, reply)
+
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
@@ -413,7 +419,6 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 		//rf.mu.Unlock()
 	}
 
-	DPrintf("[%v to %v]: RequestVote ACK. result: %v, reply: %+v", rf.me, server, ok, reply)
 
 
 	return ok
@@ -441,6 +446,8 @@ func (rf *Raft) sendRequestAppendEntries(server int, args *AppendEntriesArgs, re
 	DPrintf("[%v to %v]: RequestAppendEntries REQ. args: %+v", rf.me, server, args)
 
 	ok := rf.peers[server].Call("Raft.RequestAppendEntries", args, reply)
+
+	DPrintf("[%v to %v]: RequestAppendEntries ACK: %v, reply: %+v", rf.me, server, ok, reply)
 
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
@@ -473,7 +480,6 @@ func (rf *Raft) sendRequestAppendEntries(server int, args *AppendEntriesArgs, re
 		}
 	}
 
-	DPrintf("[%v to %v]: RequestAppendEntries ACK: %v, reply: %+v", rf.me, server, ok, reply)
 
 
 	return ok
@@ -541,7 +547,7 @@ func (rf *Raft) InstallSnapshot(args InstallSnapshotArgs,reply *InstallSnapshotR
 	}
 	rf.heartBeatChan <- true
 	rf.state = FOLLOWER
-	rf.currentTerm = reply.Term
+	rf.currentTerm = rf.currentTerm
 
 	rf.persister.SaveSnapshot(args.Data)
 
@@ -561,6 +567,9 @@ func (rf *Raft) sendInstallSnapshot(server int, args InstallSnapshotArgs, reply 
 	DPrintf("[%v to %v]: InstallSnapshot REQ. args: %+v", rf.me, server, args)
 
 	ok := rf.peers[server].Call("Raft.InstallSnapshot", args, reply)
+
+	DPrintf("[%v to %v]: InstallSnapshot ACK. reply: %+v", rf.me, server, args)
+
 	if ok {
 		if reply.Term > rf.currentTerm {
 			rf.currentTerm = reply.Term
@@ -573,7 +582,6 @@ func (rf *Raft) sendInstallSnapshot(server int, args InstallSnapshotArgs, reply 
 		rf.matchIndex[server] = args.LastIncludedIndex
 	}
 
-	DPrintf("[%v to %v]: InstallSnapshot ACK. reply: %+v", rf.me, server, args)
 	return ok
 }
 
@@ -585,7 +593,7 @@ func (rf *Raft) broadcastAppendEntriesReq() {
 	lastIndex := rf.getLastLogIndex()
 	baseIndex := rf.logs[0].Index
 
-	for i := rf.commitIndex; i <= lastIndex; i++ {
+	for i := rf.commitIndex + 1; i <= lastIndex; i++ {
 		// 利用matchIndex判断该条目是否已经被复制到了大部分server上
 		// 进行日志提交判断
 		num := 1
@@ -727,6 +735,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.readPersist(persister.ReadRaftState())
 	rf.readSnapshot(persister.ReadSnapshot())
 
+	DPrintf("[init] server %v(%p) initialization. %+v", rf.me, rf, rf)
+
 	// background go routine to track raft state
 	go func() {
 		for {
@@ -734,12 +744,12 @@ func Make(peers []*labrpc.ClientEnd, me int,
 			case FOLLOWER:
 				select {
 				case <- rf.heartBeatChan:
-					DPrintf("[heartbeat]: server %v receive heartbeat. term: %v", rf.me, rf.currentTerm)
+					DPrintf("[heartbeat]: server %v(%p) receive heartbeat. term: %v", rf.me, rf, rf.currentTerm)
 				case <- rf.voteChan:
 				case <- time.After(time.Duration(rand.Int63() % 333 + 550) * time.Millisecond):
 					rf.mu.Lock()
 					rf.state = CANDIDATE
-					DPrintf("[state change]: server %v, from FOLLOWER become a CANDIDATE. term: %v", rf.me, rf.currentTerm)
+					DPrintf("[state change]: server %v(%p), from FOLLOWER become a CANDIDATE. term: %v", rf.me, rf, rf.currentTerm)
 					rf.mu.Unlock()
 				}
 			case CANDIDATE:
@@ -748,8 +758,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 				rf.votedFor = me
 				rf.voteCounter = 1
 				rf.persist()
-				DPrintf("[report]: server %v is CANDIDATE. term: %v", rf.me, rf.currentTerm)
 				rf.mu.Unlock()
+
+				DPrintf("[report]: server %v(%p) is CANDIDATE. term: %v", rf.me, rf, rf.currentTerm)
 
 				go rf.broadcastVoteReq()
 
@@ -757,7 +768,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 				case <- rf.heartBeatChan:
 					//rf.mu.Lock()
 					rf.state = FOLLOWER
-					DPrintf("[state change]: server %v, CANDIDATE receive heartbeat, become a FOLLOWER. term: %v", rf.me, rf.currentTerm)
+					DPrintf("[state change]: server %v(%p), CANDIDATE receive heartbeat, become a FOLLOWER. term: %v", rf.me, rf, rf.currentTerm)
 					//rf.mu.Unlock()
 				case <- rf.leaderChan:
 					rf.mu.Lock()
@@ -770,7 +781,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 						rf.matchIndex[i] = 0
 					}
 
-					DPrintf("[state change]: server %v, from CANDIDATE become a LEADER. term: %v", rf.me, rf.currentTerm)
+					DPrintf("[state change]: server %v(%p), from CANDIDATE become a LEADER. term: %v", rf.me, rf, rf.currentTerm)
 					rf.mu.Unlock()
 				case <- time.After(time.Duration(rand.Int63() % 333 + 500) * time.Millisecond):
 				}
